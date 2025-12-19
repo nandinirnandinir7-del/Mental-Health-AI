@@ -1,4 +1,7 @@
 streamlit
-openai
+groq
 textblob
 pandas
+speechrecognition
+streamlit-mic-recorder
+pyaudio
