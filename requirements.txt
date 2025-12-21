@@ -5,3 +5,4 @@ pandas
 speechrecognition
 streamlit-mic-recorder
 pyaudio
+fpdf
