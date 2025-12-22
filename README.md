@@ -23,17 +23,17 @@ A **Conversational AI** designed to provide **emotional support**, **mental well
 
   * TensorFlow / Keras (for AI models)Python 3.8+
   
-  Streamlit – Web UI
+  * Streamlit – Web UI
 
-Groq API – LLaMA‑3.1 language model
+  * Groq API – LLaMA‑3.1 language model
 
-TextBlob – Sentiment analysis
+  * TextBlob – Sentiment analysis
 
-Pandas – Data handling
+  * Pandas – Data handling
 
-SpeechRecognition – Voice input
+  * FPDF - Download PDF
 
-streamlit‑mic‑recorder – Microphone support
+  
 ---
 
 ## 📂 Project Structure
@@ -44,7 +44,7 @@ Mental-Health-AI/Mental-Health-Support-Chatbot/
 ├── app.py                # Main Streamlit application
 ├── README.md             # Project documentation
 ├── requirements.txt      # Required Python libraries
-└── temp.wav              # Temporary audio file (runtime)
+
 
 ```
 
@@ -55,7 +55,7 @@ Mental-Health-AI/Mental-Health-Support-Chatbot/
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/Mental-Health-AI.git
+git clone https://github.com/nandinirnandinir7-del/Mental-Health-AI.git
 cd Mental-Health-AI
 ```
 
@@ -120,6 +120,6 @@ Contributions are welcome!
 
 ### 🌱 Remember
 
-You are not alone. Reaching out is a sign of strength.
+You are not alone. Reaching out is a   sign of strength.
 
 ✨ *Built with care to support mental well-being.*
