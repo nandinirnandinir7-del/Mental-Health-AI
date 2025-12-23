@@ -2,6 +2,7 @@ import streamlit as st
 from groq import Groq
 from textblob import TextBlob
 import pandas as pd
+from fpdf import FPDF
 import os
 
 # ------------------ API SETUP ------------------
@@ -9,7 +10,7 @@ client = Groq(
     api_key="API_KEY_PLACEHOLDER"  # Replace with your actual API key
 )
 
-
+# ------------------ AI RESPONSE ------------------
 def generate_response(prompt):
     try:
         response = client.chat.completions.create(
@@ -19,99 +20,107 @@ def generate_response(prompt):
                     "role": "system",
                     "content": (
                         "You are a mental health support chatbot. "
-                        "Be supportive, calm, and give general mental health tips. "
-                        "Do not give medical diagnosis."
+                        "Be calm, kind, supportive, and give general mental wellness tips. "
+                        "Do NOT give medical diagnosis or emergency advice."
                     )
                 },
                 {"role": "user", "content": prompt}
             ]
         )
         return response.choices[0].message.content.strip()
-
     except Exception as e:
-        return f"DEBUG ERROR: {e}"
+        return f"Error: {e}"
 
-
+# ------------------ SENTIMENT ------------------
 def analyze_sentiment(text):
-    analysis = TextBlob(text)
-    polarity = analysis.sentiment.polarity
+    polarity = TextBlob(text).sentiment.polarity
 
     if polarity > 0.5:
         return "Very Positive", polarity
-    elif 0.1 < polarity <= 0.5:
+    elif polarity > 0.1:
         return "Positive", polarity
-    elif -0.1 <= polarity <= 0.1:
+    elif polarity >= -0.1:
         return "Neutral", polarity
-    elif -0.5 < polarity < -0.1:
+    elif polarity > -0.5:
         return "Negative", polarity
     else:
         return "Very Negative", polarity
 
-# ------------------ COPING STRATEGIES ------------------
-def provide_coping_strategy(sentiment):
-    strategies = {
-        "Very Positive": "Keep nurturing these positive feelings. Share your joy with others.",
-        "Positive": "You're doing well. Try journaling or gratitude exercises.",
-        "Neutral": "Neutral moods are okay. Light exercise or music may help.",
-        "Negative": "Try deep breathing or talking to someone you trust.",
-        "Very Negative": "You are not alone. Please consider reaching out to a trusted person or professional."
-    }
-    return strategies.get(sentiment, "Take care of yourself.")
+# ------------------ COPING STRATEGY ------------------
+def coping_strategy(sentiment):
+    return {
+        "Very Positive": "Keep nurturing positive habits.",
+        "Positive": "Gratitude journaling can help.",
+        "Neutral": "Light exercise or music may improve mood.",
+        "Negative": "Deep breathing or talking to a trusted person may help.",
+        "Very Negative": "You are not alone. Reach out to someone you trust."
+    }.get(sentiment, "Take care of yourself.")
+
+# ------------------ PDF GENERATION ------------------
+def create_pdf(user_text, bot_text):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Mental Health Chatbot Response", ln=True)
+
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 8, f"\nUser Query:\n{user_text}\n\nAI Response:\n{bot_text}")
+
+    file_path = "chat_response.pdf"
+    pdf.output(file_path)
+    return file_path
+
+# ------------------ UI ------------------
+st.set_page_config(page_title="Mental Health Support Chatbot", layout="centered")
+st.title("🧠 Mental Health-AI   Support Chatbot")
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+if "mood" not in st.session_state:
+    st.session_state.mood = []
+
+user_input = st.text_input("How are you feeling today?")
+
+if st.button("Get Support") and user_input:
+    bot_reply = generate_response(user_input)
+    sentiment, polarity = analyze_sentiment(user_input)
+
+    st.session_state.history.append(("You", user_input))
+    st.session_state.history.append(("Bot", bot_reply))
+    st.session_state.mood.append(polarity)
+
+    st.subheader("🤖 AI Response")
+    st.write(bot_reply)
+
+    st.info(f"Sentiment: **{sentiment}**")
+    st.success(coping_strategy(sentiment))
+
+    pdf_file = create_pdf(user_input, bot_reply)
+    with open(pdf_file, "rb") as f:
+        st.download_button(
+            label="📄 Download Response as PDF",
+            data=f,
+            file_name="mental_health_response.pdf",
+            mime="application/pdf"
+        )
+
+# ------------------ CHAT HISTORY ------------------
+if st.session_state.history:
+    st.subheader("🗂 Chat History")
+    for sender, msg in st.session_state.history:
+        st.write(f"**{sender}:** {msg}")
+
+# ------------------ MOOD CHART ------------------
+if st.session_state.mood:
+    st.subheader("📊 Mood Tracker")
+    df = pd.DataFrame(st.session_state.mood, columns=["Polarity"])
+    st.line_chart(df)
 
 # ------------------ DISCLAIMER ------------------
-def display_disclaimer():
-    st.sidebar.markdown(
-        "<h3 style='color:red;'>Data Privacy Disclaimer</h3>",
-        unsafe_allow_html=True
-    )
-    st.sidebar.write(
-        "Messages are used only during this session and not stored permanently. "
-        "Avoid sharing sensitive personal information."
-    )
-
-# ------------------ STREAMLIT UI ------------------
-st.title("🧠 Mental Health Support Chatbot")
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-if "mood_tracker" not in st.session_state:
-    st.session_state.mood_tracker = []
-
-with st.form("chat_form"):
-    user_message = st.text_input("You:")
-    submit = st.form_submit_button("Send")
-
-if submit and user_message:
-    st.session_state.messages.append(("You", user_message))
-
-    sentiment, polarity = analyze_sentiment(user_message)
-    coping_strategy = provide_coping_strategy(sentiment)
-    response = generate_response(user_message)
-
-    st.session_state.messages.append(("Bot", response))
-    st.session_state.mood_tracker.append((user_message, sentiment, polarity))
-
-# Display chat
-for sender, msg in st.session_state.messages:
-    st.write(f"**{sender}:** {msg}")
-
-# Mood chart
-if st.session_state.mood_tracker:
-    df = pd.DataFrame(
-        st.session_state.mood_tracker,
-        columns=["Message", "Sentiment", "Polarity"]
-    )
-    st.line_chart(df["Polarity"])
-
-# Coping suggestion
-if submit:
-    st.info(f"Suggested Coping Strategy: {coping_strategy}")
-
-# Resources
-st.sidebar.title("Emergency Resources")
-st.sidebar.write(
-    "If you feel unsafe, please contact local emergency services or a trusted adult."
+st.sidebar.warning(
+    "⚠️ This chatbot is for educational purposes only.\n\n"
+    "If you feel unsafe, please contact a trusted adult or local emergency services."
 )
-
-display_disclaimer()
